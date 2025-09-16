@@ -426,11 +426,18 @@ void RendererCanvasCull::_cull_canvas_item(Item *p_canvas_item, const Transform2
 
 	if (ci->sort_y) {
 		if (!p_is_already_y_sorted) {
-			// Don't cache ysort_children_count when using canvas_cull_mask filtering
-			// as the count depends on the specific mask and can vary between viewports
-			int ysort_children_count = _count_ysort_children(ci, p_canvas_cull_mask);
-
-			child_item_count = ysort_children_count + 1;
+			// Use cached count only when canvas_cull_mask is 0xffffffff (show all layers)
+			// For filtered masks, always recalculate to avoid index out of bounds errors
+			if (p_canvas_cull_mask == 0xffffffff) {
+				if (ci->ysort_children_count == -1) {
+					ci->ysort_children_count = _count_ysort_children(ci, p_canvas_cull_mask);
+				}
+				child_item_count = ci->ysort_children_count + 1;
+			} else {
+				// Don't cache when filtering by visibility layers
+				int ysort_children_count = _count_ysort_children(ci, p_canvas_cull_mask);
+				child_item_count = ysort_children_count + 1;
+			}
 			child_items = (Item **)alloca(child_item_count * sizeof(Item *));
 
 			ci->ysort_xform = Transform2D();
