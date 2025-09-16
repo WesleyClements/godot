@@ -107,11 +107,11 @@ void RendererCanvasCull::_render_canvas_item_tree(RID p_to_render_target, Canvas
 	}
 }
 
-void RendererCanvasCull::_collect_ysort_children(RendererCanvasCull::Item *p_canvas_item, RendererCanvasCull::Item *p_material_owner, const Color &p_modulate, RendererCanvasCull::Item **r_items, int &r_index, int p_z, uint32_t p_canvas_cull_mask) {
+void RendererCanvasCull::_collect_ysort_children(RendererCanvasCull::Item *p_canvas_item, RendererCanvasCull::Item *p_material_owner, const Color &p_modulate, RendererCanvasCull::Item **r_items, int &r_index, int p_z) {
 	int child_item_count = p_canvas_item->child_items.size();
 	RendererCanvasCull::Item **child_items = p_canvas_item->child_items.ptrw();
 	for (int i = 0; i < child_item_count; i++) {
-		if (child_items[i]->visible && (child_items[i]->visibility_layer & p_canvas_cull_mask)) {
+		if (child_items[i]->visible) {
 			// To y-sort according to the item's final position, physics interpolation
 			// and transform snapping need to be applied before y-sorting.
 			Transform2D child_xform;
@@ -150,21 +150,21 @@ void RendererCanvasCull::_collect_ysort_children(RendererCanvasCull::Item *p_can
 			r_index++;
 
 			if (child_items[i]->sort_y) {
-				_collect_ysort_children(child_items[i], child_items[i]->use_parent_material ? p_material_owner : child_items[i], p_modulate * child_items[i]->modulate, r_items, r_index, abs_z, p_canvas_cull_mask);
+				_collect_ysort_children(child_items[i], child_items[i]->use_parent_material ? p_material_owner : child_items[i], p_modulate * child_items[i]->modulate, r_items, r_index, abs_z);
 			}
 		}
 	}
 }
 
-int RendererCanvasCull::_count_ysort_children(RendererCanvasCull::Item *p_canvas_item, uint32_t p_canvas_cull_mask) {
+int RendererCanvasCull::_count_ysort_children(RendererCanvasCull::Item *p_canvas_item) {
 	int ysort_children_count = 0;
 	int child_item_count = p_canvas_item->child_items.size();
 	RendererCanvasCull::Item *const *child_items = p_canvas_item->child_items.ptr();
 	for (int i = 0; i < child_item_count; i++) {
-		if (child_items[i]->visible && (child_items[i]->visibility_layer & p_canvas_cull_mask)) {
+		if (child_items[i]->visible) {
 			ysort_children_count++;
 			if (child_items[i]->sort_y) {
-				ysort_children_count += _count_ysort_children(child_items[i], p_canvas_cull_mask);
+				ysort_children_count += _count_ysort_children(child_items[i]);
 			}
 		}
 	}
@@ -426,18 +426,11 @@ void RendererCanvasCull::_cull_canvas_item(Item *p_canvas_item, const Transform2
 
 	if (ci->sort_y) {
 		if (!p_is_already_y_sorted) {
-			// Use cached count only when canvas_cull_mask is 0xffffffff (show all layers)
-			// For filtered masks, always recalculate to avoid index out of bounds errors
-			if (p_canvas_cull_mask == 0xffffffff) {
-				if (ci->ysort_children_count == -1) {
-					ci->ysort_children_count = _count_ysort_children(ci, p_canvas_cull_mask);
-				}
-				child_item_count = ci->ysort_children_count + 1;
-			} else {
-				// Don't cache when filtering by visibility layers
-				int ysort_children_count = _count_ysort_children(ci, p_canvas_cull_mask);
-				child_item_count = ysort_children_count + 1;
+			if (ci->ysort_children_count == -1) {
+				ci->ysort_children_count = _count_ysort_children(ci);
 			}
+
+			child_item_count = ci->ysort_children_count + 1;
 			child_items = (Item **)alloca(child_item_count * sizeof(Item *));
 
 			ci->ysort_xform = Transform2D();
@@ -446,7 +439,7 @@ void RendererCanvasCull::_cull_canvas_item(Item *p_canvas_item, const Transform2
 			ci->ysort_parent_abs_z_index = parent_z;
 			child_items[0] = ci;
 			int i = 1;
-			_collect_ysort_children(ci, p_material_owner, Color(1, 1, 1, 1), child_items, i, p_z, p_canvas_cull_mask);
+			_collect_ysort_children(ci, p_material_owner, Color(1, 1, 1, 1), child_items, i, p_z);
 
 			SortArray<Item *, ItemYSort> sorter;
 			sorter.sort(child_items, child_item_count);
