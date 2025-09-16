@@ -162,6 +162,7 @@ void TileMapLayer::_debug_update(bool p_force_cleanup) {
 			}
 			rs->canvas_item_set_z_index(ci, RS::CANVAS_ITEM_Z_MAX - 1);
 			rs->canvas_item_set_parent(ci, get_canvas_item());
+			rs->canvas_item_set_visibility_layer(ci, get_visibility_layer());
 		}
 		const Vector2 quadrant_pos = tile_set->map_to_local(debug_quadrant->quadrant_coords * TILE_MAP_DEBUG_QUADRANT_SIZE);
 		Transform2D xform(0, quadrant_pos);
@@ -342,6 +343,7 @@ void TileMapLayer::_rendering_update(bool p_force_cleanup) {
 						rs->canvas_item_set_z_as_relative_to_parent(ci, true);
 						rs->canvas_item_set_z_index(ci, tile_z_index);
 						rs->canvas_item_set_self_modulate(ci, get_self_modulate());
+						rs->canvas_item_set_visibility_layer(ci, get_visibility_layer());
 
 						rs->canvas_item_set_default_texture_filter(ci, RS::CanvasItemTextureFilter(get_texture_filter_in_tree()));
 						rs->canvas_item_set_default_texture_repeat(ci, RS::CanvasItemTextureRepeat(get_texture_repeat_in_tree()));
